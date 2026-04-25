@@ -62,57 +62,79 @@ export function getCurrentPosition(): Promise<{ latitude: number; longitude: num
   });
 }
 
-// 从高德地图 Web API 获取周边餐厅
+// 从高德地图 Web API 获取周边餐厅（支持分页获取所有结果）
 async function fetchFromAMap(
   latitude: number,
   longitude: number,
   radius: number
 ): Promise<Restaurant[]> {
-  const url = new URL(`${AMAP_API_BASE}/around`);
-  url.searchParams.set('key', AMAP_API_KEY);
-  url.searchParams.set('location', `${longitude},${latitude}`);
-  url.searchParams.set('types', '050000'); // 餐饮服务
-  url.searchParams.set('radius', radius.toString());
-  url.searchParams.set('offset', '50');
-  url.searchParams.set('page', '1');
-  url.searchParams.set('extensions', 'all');
-  url.searchParams.set('output', 'json');
+  const allRestaurants: Restaurant[] = [];
+  let currentPage = 1;
+  const pageSize = 100; // 高德API每次最多返回100条
+  let hasMoreData = true;
 
-  const response = await fetch(url.toString());
-  if (!response.ok) {
-    throw new Error(`API 请求失败: ${response.status}`);
+  while (hasMoreData) {
+    const url = new URL(`${AMAP_API_BASE}/around`);
+    url.searchParams.set('key', AMAP_API_KEY);
+    url.searchParams.set('location', `${longitude},${latitude}`);
+    url.searchParams.set('types', '050000'); // 餐饮服务
+    url.searchParams.set('radius', radius.toString());
+    url.searchParams.set('offset', pageSize.toString());
+    url.searchParams.set('page', currentPage.toString());
+    url.searchParams.set('extensions', 'all');
+    url.searchParams.set('output', 'json');
+
+    const response = await fetch(url.toString());
+    if (!response.ok) {
+      throw new Error(`API 请求失败: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // 调试：打印原始返回数据
+    console.log(`高德API第${currentPage}页返回:`, data);
+
+    if (data.status !== '1') {
+      throw new Error(data.info || '高德API返回错误');
+    }
+
+    const pois = data.pois || [];
+    const totalCount = parseInt(data.count) || 0;
+
+    if (pois.length === 0) {
+      hasMoreData = false;
+    } else {
+      const mapped = pois.map((poi: {
+        name: string;
+        address: string;
+        distance: string;
+        type: string;
+        location: string;
+      }) => ({
+        name: poi.name,
+        address: poi.address || '',
+        distance: poi.distance ? `${poi.distance}m` : '',
+        category: extractCategory(poi.type),
+        latitude: poi.location ? parseFloat(poi.location.split(',')[1]) : undefined,
+        longitude: poi.location ? parseFloat(poi.location.split(',')[0]) : undefined,
+      }));
+      allRestaurants.push(...mapped);
+
+      // 检查是否还有更多数据
+      if (allRestaurants.length >= totalCount || pois.length < pageSize) {
+        hasMoreData = false;
+      } else {
+        currentPage++;
+      }
+    }
   }
 
-  const data = await response.json();
-
-  // 调试：打印原始返回数据
-  console.log('高德API原始返回:', data);
-
-  if (data.status !== '1') {
-    throw new Error(data.info || '高德API返回错误');
-  }
-
-  const pois = data.pois || [];
-  if (pois.length === 0) {
-    // 如果没有POI，检查返回的count
-    console.log('没有找到POIs，API返回:', data.count, data.info);
+  if (allRestaurants.length === 0) {
     throw new Error('周边没有找到餐厅');
   }
 
-  return pois.map((poi: {
-    name: string;
-    address: string;
-    distance: string;
-    type: string;
-    location: string;
-  }) => ({
-    name: poi.name,
-    address: poi.address || '',
-    distance: poi.distance ? `${poi.distance}m` : '',
-    category: extractCategory(poi.type),
-    latitude: poi.location ? parseFloat(poi.location.split(',')[1]) : undefined,
-    longitude: poi.location ? parseFloat(poi.location.split(',')[0]) : undefined,
-  }));
+  console.log(`总共获取 ${allRestaurants.length} 家餐厅`);
+  return allRestaurants;
 }
 
 // 获取周边餐厅列表
