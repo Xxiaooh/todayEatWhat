@@ -24,6 +24,9 @@ export function useLocation(): UseLocationResult {
       const pos = await getCurrentPosition();
       setPosition(pos);
 
+      // 存储用户位置，供 ResultCard 计算步行时间使用
+      sessionStorage.setItem('userPosition', JSON.stringify(pos));
+
       const nearbyRestaurants = await getNearbyRestaurants(pos.latitude, pos.longitude, 1000);
       setRestaurants(nearbyRestaurants);
     } catch (err) {

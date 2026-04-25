@@ -1,8 +1,12 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { calculateWalkingTime, formatWalkingTime } from '../services/mapService';
 
 interface Restaurant {
   name: string;
   distance: string;
+  walkingTime?: string;
+  walkingDistance?: number;
   category: string;
   address?: string;
   latitude?: number;
@@ -62,6 +66,48 @@ function copyAddress(address: string) {
 }
 
 export function ResultCard({ restaurant, onRetry }: ResultCardProps) {
+  const [walkingTime, setWalkingTime] = useState<string | null>(null);
+  const [walkingDistance, setWalkingDistance] = useState<string | null>(null);
+  const [loadingWalk, setLoadingWalk] = useState(false);
+
+  // 获取步行时间和距离
+  useEffect(() => {
+    if (!restaurant?.latitude || !restaurant?.longitude) {
+      return;
+    }
+
+    // 获取存储的用户位置
+    const storedPosition = sessionStorage.getItem('userPosition');
+    if (!storedPosition) {
+      return;
+    }
+
+    const userPos = JSON.parse(storedPosition);
+    setLoadingWalk(true);
+
+    // 解析高德返回的直线距离（米）
+    const straightDistanceStr = restaurant.distance.replace(/[^0-9]/g, '');
+    const straightDistance = straightDistanceStr ? parseInt(straightDistanceStr) : undefined;
+
+    calculateWalkingTime(
+      userPos.latitude,
+      userPos.longitude,
+      restaurant.latitude,
+      restaurant.longitude,
+      straightDistance
+    ).then((result) => {
+      if (result) {
+        setWalkingTime(formatWalkingTime(result.time));
+        if (result.distance >= 1000) {
+          setWalkingDistance(`${(result.distance / 1000).toFixed(1)}公里`);
+        } else {
+          setWalkingDistance(`${result.distance}米`);
+        }
+      }
+      setLoadingWalk(false);
+    });
+  }, [restaurant]);
+
   if (!restaurant) return null;
 
   return (
@@ -82,9 +128,19 @@ export function ResultCard({ restaurant, onRetry }: ResultCardProps) {
 
         {/* 信息标签 */}
         <div className="flex flex-wrap justify-center gap-3 mb-6">
-          {restaurant.distance && (
-            <span className="px-4 py-2 bg-gradient-to-r from-warm-orange to-soft-orange text-white rounded-full text-sm font-medium">
-              {restaurant.distance}
+          {/* 步行时间和距离（主要信息） */}
+          {walkingTime && (
+            <span className="px-4 py-2 bg-gradient-to-r from-warm-orange to-soft-orange text-white rounded-full text-sm font-medium flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              步行约 {walkingTime}
+              {walkingDistance && <span className="opacity-80">（{walkingDistance}）</span>}
+            </span>
+          )}
+          {loadingWalk && (
+            <span className="px-4 py-2 bg-gray-200 text-gray-500 rounded-full text-sm font-medium">
+              计算中...
             </span>
           )}
           <span className="px-4 py-2 bg-gradient-to-r from-sweet-yellow to-muted-yellow text-warm-orange rounded-full text-sm font-medium">
