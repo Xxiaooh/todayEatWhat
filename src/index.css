@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cream: #FFF8F0;
+  --color-peach: #FFDAB9;
+  --color-coral: #FF9966;
+  --color-warm-orange: #FF9933;
+  --color-soft-orange: #FF8C42;
+  --color-muted-yellow: #FFE5B4;
+  --color-light-yellow: #FFF4E0;
+  --color-sweet-yellow: #FFD699;
+  --color-golden: #FFC107;
+}
+
+body {
+  font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+.bg-warm-gradient {
+  background: linear-gradient(180deg, #FFF9E6 0%, #FFE5B4 50%, #FFD699 100%);
+}
+
+.paw-decoration {
+  position: absolute;
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+/* 猫爪SVG样式 */
+.cat-paw {
+  filter: drop-shadow(0 2px 4px rgba(255, 153, 51, 0.25));
+}
+
+/* 浮动动画 */
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(5deg); }
+}
+
+.paw-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+/* 按钮样式 */
+.btn-warm {
+  background: linear-gradient(135deg, #FF9933 0%, #FF8C42 100%);
+}
+
+.btn-warm:hover {
+  background: linear-gradient(135deg, #FF8800 0%, #FF7B30 100%);
+}
+
+/* 卡片阴影 */
+.shadow-warm {
+  box-shadow: 0 8px 32px rgba(255, 153, 51, 0.25);
+}
